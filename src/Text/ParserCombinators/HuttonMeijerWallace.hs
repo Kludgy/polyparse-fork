@@ -55,6 +55,7 @@ module Text.ParserCombinators.HuttonMeijerWallace
 
 import Data.Char
 import Control.Monad
+import Control.Applicative hiding (many)
 
 infixr 5 +++
 
@@ -73,6 +74,14 @@ instance Functor (Parser s t e) where
                         Right res -> Right [(f v, s, out) | (v,s,out) <- res]
                         Left err  -> Left err
                        )
+
+instance Applicative (Parser s t e) where
+    pure  = return
+    (<*>) = ap
+
+instance Alternative (Parser s t e) where
+    (<|>) = mplus
+    empty = mzero
 
 instance Monad (Parser s t e) where
    -- return      :: a -> Parser s t e a

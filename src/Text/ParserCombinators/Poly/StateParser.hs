@@ -4,24 +4,26 @@
 --   via T.P.Poly.State or T.P.Poly.StateLazy.
 module Text.ParserCombinators.Poly.StateParser
   ( -- * The Parser datatype
-    Parser(P)	-- datatype, instance of: Functor, Monad, PolyParse
-  , Result(..)	-- internal to the parser monad
+    Parser(P)   -- datatype, instance of: Functor, Monad, PolyParse
+  , Result(..)  -- internal to the parser monad
     -- ** basic parsers
-  , next	-- :: Parser s t t
-  , eof		-- :: Parser s t ()
-  , satisfy	-- :: (t->Bool) -> Parser s t t
+  , next        -- :: Parser s t t
+  , eof         -- :: Parser s t ()
+  , satisfy     -- :: (t->Bool) -> Parser s t t
   , onFail      -- :: Parser s t a -> Parser s t a -> Parser s t a
     -- ** State-handling
   , stUpdate    -- :: (s->s) -> Parser s t ()
   , stQuery     -- :: (s->a) -> Parser s t a
   , stGet       -- :: Parser s t s
     -- ** re-parsing
-  , reparse	-- :: [t] -> Parser s t ()
+  , reparse     -- :: [t] -> Parser s t ()
   ) where
 
 
 import Text.ParserCombinators.Poly.Base
 import Text.ParserCombinators.Poly.Result
+import Control.Applicative
+import Control.Monad       (liftM, ap)
 
 -- | This @Parser@ datatype is a fairly generic parsing monad with error
 --   reporting, and running state.
@@ -31,6 +33,17 @@ newtype Parser s t a = P (s -> [t] -> Result ([t],s) a)
 
 instance Functor (Parser s t) where
     fmap f (P p) = P (\s-> fmap f . p s)
+
+instance Applicative (Parser s t) where
+    pure f    = return f
+    pf <*> px = do { f <- pf; x <- px; return (f x) }
+#if defined(GLASGOW_HASKELL) && GLASGOW_HASKELL > 610
+    p  <*  q  = p `discard` q
+#endif
+
+instance Alternative (Parser s t) where
+    empty     = fail "no parse"
+    p <|> q   = p `onFail` q
 
 instance Monad (Parser s t) where
     return x     = P (\s ts-> Success (ts,s) x)
@@ -65,7 +78,7 @@ instance Commitment (Parser s t) where
                            r@(Committed _)  -> r )
             showErr (name,err) = name++":\n"++indent 2 err
 
-infixl 6 `onFail`	-- not sure about precedence 6?
+infixl 6 `onFail`        -- not sure about precedence 6?
 
 -- | @p `onFail` q@ means parse p, unless p fails, in which case
 --   parse q instead.

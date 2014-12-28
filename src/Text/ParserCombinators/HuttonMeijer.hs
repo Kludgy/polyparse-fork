@@ -36,6 +36,7 @@ module Text.ParserCombinators.HuttonMeijer
 
 import Data.Char
 import Control.Monad
+import Control.Applicative hiding (many)
 
 infixr 5 +++
 
@@ -49,6 +50,14 @@ newtype Parser a   = P ([Token] -> [(a,[Token])])
 instance Functor Parser where
    -- map         :: (a -> b) -> (Parser a -> Parser b)
    fmap f (P p)    = P (\inp -> [(f v, out) | (v,out) <- p inp])
+
+instance Applicative Parser where
+    pure  = return
+    (<*>) = ap
+
+instance Alternative Parser where
+    (<|>) = mplus
+    empty = mzero
 
 instance Monad Parser where
    -- return      :: a -> Parser a
